@@ -9,6 +9,7 @@ use yii\web\Response;
 use yii\filters\VerbFilter;
 use app\models\LoginForm;
 use app\models\ContactForm;
+use app\models\Categories;
 
 class SiteController extends Controller
 {
@@ -61,7 +62,9 @@ class SiteController extends Controller
      */
     public function actionIndex()
     {
-        return $this->render('index');
+        $model = new Categories();
+        $categories = $model->find()->orderBy(["closestParentId" => SORT_DESC])->all();
+        return $this->render('index', ['categories'=>$categories]);
     }
 
     /**
@@ -124,5 +127,29 @@ class SiteController extends Controller
     public function actionAbout()
     {
         return $this->render('about');
+    }
+
+    /* Category page */
+    public function actionCategory($id)
+    {
+        $model = new Categories();
+        $categoryNames = array();
+        $categoryIds = array();
+
+        while (true) {
+            $cat = $model->find()->where(["id" => $id])->orderBy(["closestParentId" => SORT_DESC])->all()[0];
+            $parId = $cat['closestParentId'];
+            $categoryNames[] = $cat['name'];
+            $categoryIds[] = $cat['id'];
+            $id = $parId;
+
+            if ($parId === null)
+                break;
+        }
+
+        $categoryNames = array_reverse($categoryNames);
+        $categoryIds = array_reverse($categoryIds);
+
+        return $this->render('category', ['categoryNames' => $categoryNames, 'categoryIds' => $categoryIds, 'id' => $id]);
     }
 }

@@ -82,3 +82,17 @@ a.desc:after {
 .nav > li > form > button.logout:focus {
     outline: none;
 }
+li {
+    position: relative;
+    list-style: none;
+}
+.line-wrapper:hover .line {
+    border-left: 1px solid lightgray;
+}
+.line {
+    position: absolute;
+    width: 100%;
+    height: calc(100% - 30px);
+    margin-top: 30px;
+    border-left: 1px dashed lightgray;
+}

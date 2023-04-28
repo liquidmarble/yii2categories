@@ -1,53 +1,136 @@
-<?php
-
-/** @var yii\web\View $this */
-
-$this->title = 'My Yii Application';
+<?php 
+use yii\helpers\Html;
+use yii\widgets\LinkPager;
+use yii\web\AssetManager;
 ?>
-<div class="site-index">
+<h1>Categories</h1>
+<?php 
+function drawTreeStructure($ar) {
+    foreach($ar as $key => $item) {
+        if (is_array($item)) {
+            echo "<ul>";
+            echo "<li>";
+            echo "<div class=\"line-wrapper\">";
+            echo "<div class=\"line\"></div>";
+            echo "<a href=\"/category/" . $key . "\">" . $item['name'] . "</a>";
+            echo "</div>";
+            drawTreeStructure($item);
+            echo "</li>";
+            echo "</ul>";
+        }
+    }
+}
 
-    <div class="jumbotron text-center bg-transparent">
-        <h1 class="display-4">Congratulations!</h1>
+function sortNestedArrayAssoc(&$ar) {
+    if (!is_array($ar)) {
+        return false;
+    }
+    ksort($ar);
+    foreach ($ar as $key => $value) {
+        sortNestedArrayAssoc($ar[$key]);
+    }
+    return true;
+}
 
-        <p class="lead">You have successfully created your Yii-powered application.</p>
+$tmp = array();
+$cat = array();
+$out = array();
+$final = array();
 
-        <p><a class="btn btn-lg btn-success" href="http://www.yiiframework.com">Get started with Yii</a></p>
-    </div>
+/* Convert object to array */
+foreach($categories as $category) {
+    $cat[$category['id']] = array(
+        "parentId" => $category['parentId'],
+        "closestParentId" => $category['closestParentId'],
+        "level" => $category['level'],
+        "name" => $category['name']
+    );
+}
 
-    <div class="body-content">
+foreach($categories as $category) {
+    $parentId = $category['id'];
+    $out[$category['id']] = array(
+        "parentId" => $category['parentId'],
+        "closestParentId" => $category['closestParentId'],
+        "level" => $category['level'],
+        "name" => $category['name']
+    );
+    for($i = $category['level']; $i > 0; $i--) {
+        $tmp[] = $cat[$parentId]['closestParentId'];
+        $parentId = $cat[$parentId]['closestParentId'];
+    }
+    foreach($tmp as $pId) {
+        $out = [
+            $pId => $out
+        ];
+    }
+    ###### Объединяем промежуточный массив с финальным #####
+    $final = array_replace_recursive($out, $final);
+    $tmp = array();
+    $out = array();
+}
 
-        <div class="row">
-            <div class="col-lg-4">
-                <h2>Heading</h2>
+sortNestedArrayAssoc($final);
+drawTreeStructure($final);
 
-                <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et
-                    dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip
-                    ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-                    fugiat nulla pariatur.</p>
+##############################
+##### Генерация категорий ####
+##############################
 
-                <p><a class="btn btn-outline-secondary" href="http://www.yiiframework.com/doc/">Yii Documentation &raquo;</a></p>
-            </div>
-            <div class="col-lg-4">
-                <h2>Heading</h2>
+/*
+function getParentId(&$categories, $category) {
 
-                <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et
-                    dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip
-                    ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-                    fugiat nulla pariatur.</p>
+    $tmp = $category;
+    $closest = null;
+    $current = null;
+    $level = 0;
 
-                <p><a class="btn btn-outline-secondary" href="http://www.yiiframework.com/forum/">Yii Forum &raquo;</a></p>
-            </div>
-            <div class="col-lg-4">
-                <h2>Heading</h2>
+    while ($tmp['closestParentId'] != null) {
+        $closest = $tmp['closestParentId'] - 1;
+        $current = $categories[$closest]['id'];
+        $tmp['closestParentId'] = $categories[$closest]['closestParentId'];
+        $level++;
+    }
 
-                <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et
-                    dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip
-                    ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-                    fugiat nulla pariatur.</p>
+    $category['parentId'] = $current;
+    $category['level'] = $level;
+    $categories[(int)$category['id'] - 1] = $category;
 
-                <p><a class="btn btn-outline-secondary" href="http://www.yiiframework.com/extensions/">Yii Extensions &raquo;</a></p>
-            </div>
-        </div>
+}
 
-    </div>
-</div>
+function getClosestParent(&$availiableParents, &$parId) {
+    $randKey = array_rand($availiableParents);
+    array_push($availiableParents, $parId);
+    $parId++;
+    return $availiableParents[$randKey];
+}
+
+$availiableParents = array(null);
+$parId = 1;
+$parentIds = array();
+
+##### Рандомим ближайшего родителя #####
+for($i = 0; $i < 5000; $i++) {
+    $parentId = getClosestParent($availiableParents, $parId);
+    array_push($parentIds, array("id" => $i+1, "closestParentId" =>  $parentId));
+}
+sort($parentIds);
+
+##### Ищем самого дальнего родителя #####
+foreach($parentIds as $key => $value) {
+    getParentId($parentIds, $value);
+}
+
+$i = 0;
+foreach($parentIds as $key => $value) {
+    $i++;
+    if (is_null($value['parentId'])) {
+        $value['parentId'] = "null";
+    }
+
+    if (is_null($value['closestParentId'])) {
+        $value['closestParentId'] = "null";
+    }
+    echo "( " . $value['parentId'] . ", " . $value['closestParentId'] . ", " . $value['level'] . ", \"cat" . $i . "\"),<br>"; 
+}
+*/
